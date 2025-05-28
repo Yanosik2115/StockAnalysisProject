@@ -1,5 +1,7 @@
 package com.yanosik.rcd.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -15,6 +17,14 @@ public class StockDataDto implements Serializable {
 		List<StockPriceDto> stockPrices;
 		StockMetadataDto stockMetadata;
 
+		@JsonCreator
+		public StockDataDto(
+				@JsonProperty("stockPrices") List<StockPriceDto> stockPrices,
+				@JsonProperty("stockMetadata") StockMetadataDto stockMetadata) {
+				this.stockPrices = stockPrices;
+				this.stockMetadata = stockMetadata;
+		}
+
 		/**
 		 * DTO for {@link com.yanosik.rcd.model.StockPrice}
 		 */
@@ -27,6 +37,21 @@ public class StockDataDto implements Serializable {
 				BigDecimal close;
 				BigDecimal volume;
 
+				@JsonCreator
+				public StockPriceDto(
+						@JsonProperty("timestamp") LocalDateTime timestamp,
+						@JsonProperty("open") BigDecimal open,
+						@JsonProperty("high") BigDecimal high,
+						@JsonProperty("low") BigDecimal low,
+						@JsonProperty("close") BigDecimal close,
+						@JsonProperty("volume") BigDecimal volume) {
+						this.timestamp = timestamp;
+						this.open = open;
+						this.high = high;
+						this.low = low;
+						this.close = close;
+						this.volume = volume;
+				}
 		}
 
 		/**
@@ -40,5 +65,18 @@ public class StockDataDto implements Serializable {
 				String interval;
 				String outputSize;
 
+				@JsonCreator
+				public StockMetadataDto(
+						@JsonProperty("information") String information,
+						@JsonProperty("symbol") String symbol,
+						@JsonProperty("lastRefreshed") LocalDateTime lastRefreshed,
+						@JsonProperty("interval") String interval,
+						@JsonProperty("outputSize") String outputSize) {
+						this.information = information;
+						this.symbol = symbol;
+						this.lastRefreshed = lastRefreshed;
+						this.interval = interval;
+						this.outputSize = outputSize;
+				}
 		}
 }

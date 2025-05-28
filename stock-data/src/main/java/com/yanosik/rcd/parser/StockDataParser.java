@@ -1,4 +1,5 @@
-package com.yanosik.rcd.service;
+package com.yanosik.rcd.parser;
+
 import com.yanosik.rcd.dto.StockDataDto;
 import com.yanosik.rcd.model.StockData;
 import com.yanosik.rcd.model.StockMetadata;
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
  * Mapper class for converting between StockData entity and StockDataDto
  */
 @Component
-public class StockDataMapper {
+public class StockDataParser {
 
 		/**
 		 * Converts StockData entity to StockDataDto
@@ -45,11 +46,16 @@ public class StockDataMapper {
 
 				StockData stockData = new StockData();
 
+				// Map stock metadata first (required field)
+				StockMetadata stockMetadata = mapStockMetadataDtoToEntity(stockDataDto.getStockMetadata());
+				if (stockMetadata == null) {
+						throw new IllegalArgumentException("StockMetadata cannot be null");
+				}
+				stockData.setStockMetadata(stockMetadata);
+
+				// Map stock prices
 				List<StockPrice> stockPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices());
 				stockData.setStockPrices(stockPrices);
-
-				StockMetadata stockMetadata = mapStockMetadataDtoToEntity(stockDataDto.getStockMetadata());
-				stockData.setStockMetadata(stockMetadata);
 
 				return stockData;
 		}

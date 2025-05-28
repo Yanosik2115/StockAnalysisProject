@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 public class AlphaVantageService {
 		private static final Logger log = LoggerFactory.getLogger(AlphaVantageService.class);
 
-		private final KafkaTemplate<String, String> kafkaTemplate;
+		private final KafkaTemplate<String, StockDataDto> kafkaTemplate;
 		private final WebClient webClient;
 		private final DiscoveryClient discoveryClient;
 		private final StockDataDtoParser stockDataDtoParser;
@@ -30,7 +30,7 @@ public class AlphaVantageService {
 		@Value("${ALPHAVANTAGE_API_KEY}")
 		private String apiKey;
 
-		public AlphaVantageService(KafkaTemplate<String, String> kafkaTemplate,
+		public AlphaVantageService(KafkaTemplate<String, StockDataDto> kafkaTemplate,
 		                           WebClient webClient,
 		                           DiscoveryClient discoveryClient, StockDataDtoParser stockDataDtoParser) {
 				this.kafkaTemplate = kafkaTemplate;
@@ -75,11 +75,7 @@ public class AlphaVantageService {
 								return Mono.empty();
 						})
 						.bodyToMono(StockDataDto.class)
-						.doOnNext(response -> {
-								log.info("Raw response from stock-data service: '{}'", response);
-						})
-						.filter(Objects::nonNull)
-						.doOnNext(response -> log.info("Filtered response from stock-data service: {}", response));
+						.filter(Objects::nonNull);
 		}
 
 		private Mono<StockDataDto> fetchStockDataFromApi(String symbol) {
@@ -101,30 +97,19 @@ public class AlphaVantageService {
 						.onStatus(HttpStatusCode::isError, response ->
 								Mono.error(new RuntimeException("AlphaVantage API error: " + response.statusCode())))
 						.bodyToMono(String.class)
-						.flatMap(jsonResponse -> {
-								if (!stockDataDtoParser.isValidAlphaVantageJson(jsonResponse)) {
-										return Mono.error(new RuntimeException("Invalid AlphaVantage response for symbol: " + symbol));
-								}
-
+						.doOnNext(jsonResponse -> {
+								StockDataDto stockDataDto = StockDataDtoParser.parse(jsonResponse);
+								log.info("Received response from AlphaVantage API for symbol: {}", symbol);
 								CompletableFuture.runAsync(() -> {
 										try {
-												kafkaTemplate.send("stock_data", jsonResponse);
+												kafkaTemplate.send("stock_data", stockDataDto);
 												log.info("Sent stock data to Kafka for symbol: {}", symbol);
 										} catch (Exception e) {
 												log.error("Failed to send stock data to Kafka for symbol: {}", symbol, e);
 										}
 								});
-
-								try {
-										StockDataDto stockDataDto = StockDataDtoParser.parse(jsonResponse);
-										log.info("Successfully parsed stock data for symbol: {} with {} price records",
-												symbol, stockDataDto.getStockPrices().size());
-										return Mono.just(stockDataDto);
-								} catch (Exception e) {
-										log.error("Failed to parse AlphaVantage response for symbol: {}", symbol, e);
-										return Mono.error(new RuntimeException("Failed to parse AlphaVantage response", e));
-								}
 						})
+						.map(StockDataDtoParser::parse)
 						.switchIfEmpty(Mono.error(new RuntimeException("No data available from AlphaVantage")));
 		}
 }

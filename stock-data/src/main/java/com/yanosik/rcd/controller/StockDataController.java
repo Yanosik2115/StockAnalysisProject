@@ -1,10 +1,9 @@
 package com.yanosik.rcd.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yanosik.rcd.dto.StockDataDto;
 import com.yanosik.rcd.model.StockData;
 import com.yanosik.rcd.repository.StockDataRepository;
-import com.yanosik.rcd.service.StockDataMapper;
+import com.yanosik.rcd.parser.StockDataParser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StockDataController {
 		private final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StockDataController.class);
 		private final StockDataRepository stockDataRepository;
-		private final StockDataMapper stockDataMapper;
+		private final StockDataParser stockDataParser;
 
-		public StockDataController(StockDataRepository stockDataRepository, StockDataMapper stockDataMapper) {
+		public StockDataController(StockDataRepository stockDataRepository, StockDataParser stockDataParser) {
 				this.stockDataRepository = stockDataRepository;
-				this.stockDataMapper = stockDataMapper;
+				this.stockDataParser = stockDataParser;
 		}
 
 		@GetMapping("/get")
@@ -29,7 +28,7 @@ public class StockDataController {
 
 				if (stockData != null) {
 						log.info("Stock data retrieved for symbol: {}", symbol);
-						StockDataDto stockDataDto = stockDataMapper.toDto(stockData);
+						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
 						return ResponseEntity.ok(stockDataDto);
 				} else {
 						log.info("No stock data found for symbol: {}", symbol);
