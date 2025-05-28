@@ -16,12 +16,6 @@ import java.util.stream.Collectors;
 @Component
 public class StockDataParser {
 
-		/**
-		 * Converts StockData entity to StockDataDto
-		 *
-		 * @param stockData the entity to convert
-		 * @return StockDataDto or null if input is null
-		 */
 		public StockDataDto toDto(StockData stockData) {
 				if (stockData == null) {
 						return null;
@@ -33,12 +27,6 @@ public class StockDataParser {
 				return new StockDataDto(stockPriceDtos, stockMetadataDto);
 		}
 
-		/**
-		 * Converts StockDataDto to StockData entity
-		 *
-		 * @param stockDataDto the DTO to convert
-		 * @return StockData entity or null if input is null
-		 */
 		public StockData toEntity(StockDataDto stockDataDto) {
 				if (stockDataDto == null) {
 						return null;
@@ -46,53 +34,51 @@ public class StockDataParser {
 
 				StockData stockData = new StockData();
 
-				// Map stock metadata first (required field)
+				// Set up metadata first
 				StockMetadata stockMetadata = mapStockMetadataDtoToEntity(stockDataDto.getStockMetadata());
 				if (stockMetadata == null) {
 						throw new IllegalArgumentException("StockMetadata cannot be null");
 				}
+
 				stockData.setStockMetadata(stockMetadata);
 
-				// Map stock prices
-				List<StockPrice> stockPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices());
+				List<StockPrice> stockPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices(), stockData);
 				stockData.setStockPrices(stockPrices);
 
 				return stockData;
 		}
 
-		/**
-		 * Updates existing StockData entity with data from StockDataDto
-		 *
-		 * @param stockData the entity to update
-		 * @param stockDataDto the DTO containing new data
-		 * @return updated StockData entity
-		 */
 		public StockData updateEntityFromDto(StockData stockData, StockDataDto stockDataDto) {
 				if (stockData == null || stockDataDto == null) {
 						return stockData;
 				}
 
-				// Update stock metadata
 				if (stockDataDto.getStockMetadata() != null) {
 						if (stockData.getStockMetadata() == null) {
-								stockData.setStockMetadata(new StockMetadata());
+								StockMetadata newMetadata = new StockMetadata();
+								stockData.setStockMetadata(newMetadata);
 						}
 						updateStockMetadataFromDto(stockData.getStockMetadata(), stockDataDto.getStockMetadata());
 				}
 
-				// Update stock prices - replace existing list
+				// Update stock prices - replace existing list while maintaining relationships
 				if (stockDataDto.getStockPrices() != null) {
-						List<StockPrice> updatedPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices());
-						stockData.getStockPrices().clear();
+						// Clear existing prices
+						if (stockData.getStockPrices() != null) {
+								stockData.getStockPrices().clear();
+						} else {
+								stockData.setStockPrices(new ArrayList<>());
+						}
+
+						// Add new prices with proper relationships
+						List<StockPrice> updatedPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices(), stockData);
 						stockData.getStockPrices().addAll(updatedPrices);
 				}
 
 				return stockData;
 		}
 
-		/**
-		 * Converts list of StockPrice entities to list of StockPriceDto
-		 */
+
 		private List<StockDataDto.StockPriceDto> mapStockPricesToDtos(List<StockPrice> stockPrices) {
 				if (stockPrices == null) {
 						return new ArrayList<>();
@@ -103,9 +89,7 @@ public class StockDataParser {
 						.collect(Collectors.toList());
 		}
 
-		/**
-		 * Converts StockPrice entity to StockPriceDto
-		 */
+
 		private StockDataDto.StockPriceDto mapStockPriceToDto(StockPrice stockPrice) {
 				if (stockPrice == null) {
 						return null;
@@ -121,9 +105,7 @@ public class StockDataParser {
 				);
 		}
 
-		/**
-		 * Converts StockMetadata entity to StockMetadataDto
-		 */
+
 		private StockDataDto.StockMetadataDto mapStockMetadataToDto(StockMetadata stockMetadata) {
 				if (stockMetadata == null) {
 						return null;
@@ -138,23 +120,21 @@ public class StockDataParser {
 				);
 		}
 
-		/**
-		 * Converts list of StockPriceDto to list of StockPrice entities
-		 */
-		private List<StockPrice> mapStockPriceDtosToEntities(List<StockDataDto.StockPriceDto> stockPriceDtos) {
+
+		private List<StockPrice> mapStockPriceDtosToEntities(List<StockDataDto.StockPriceDto> stockPriceDtos, StockData parentStockData) {
 				if (stockPriceDtos == null) {
 						return new ArrayList<>();
 				}
 
 				return stockPriceDtos.stream()
-						.map(this::mapStockPriceDtoToEntity)
+						.map(dto -> mapStockPriceDtoToEntity(dto, parentStockData))
 						.collect(Collectors.toList());
 		}
 
 		/**
-		 * Converts StockPriceDto to StockPrice entity
+		 * FIXED: Converts StockPriceDto to StockPrice entity with proper parent reference
 		 */
-		private StockPrice mapStockPriceDtoToEntity(StockDataDto.StockPriceDto stockPriceDto) {
+		private StockPrice mapStockPriceDtoToEntity(StockDataDto.StockPriceDto stockPriceDto, StockData parentStockData) {
 				if (stockPriceDto == null) {
 						return null;
 				}
@@ -166,13 +146,11 @@ public class StockDataParser {
 				stockPrice.setLow(stockPriceDto.getLow());
 				stockPrice.setClose(stockPriceDto.getClose());
 				stockPrice.setVolume(stockPriceDto.getVolume());
+				stockPrice.setStockData(parentStockData);
 
 				return stockPrice;
 		}
 
-		/**
-		 * Converts StockMetadataDto to StockMetadata entity
-		 */
 		private StockMetadata mapStockMetadataDtoToEntity(StockDataDto.StockMetadataDto stockMetadataDto) {
 				if (stockMetadataDto == null) {
 						return null;
@@ -188,9 +166,6 @@ public class StockDataParser {
 				return stockMetadata;
 		}
 
-		/**
-		 * Updates existing StockMetadata entity with data from StockMetadataDto
-		 */
 		private void updateStockMetadataFromDto(StockMetadata stockMetadata, StockDataDto.StockMetadataDto stockMetadataDto) {
 				if (stockMetadata == null || stockMetadataDto == null) {
 						return;
@@ -201,37 +176,5 @@ public class StockDataParser {
 				stockMetadata.setLastRefreshed(stockMetadataDto.getLastRefreshed());
 				stockMetadata.setInterval(stockMetadataDto.getInterval());
 				stockMetadata.setOutputSize(stockMetadataDto.getOutputSize());
-		}
-
-		/**
-		 * Converts a list of StockData entities to a list of StockDataDto
-		 *
-		 * @param stockDataList list of entities to convert
-		 * @return list of DTOs
-		 */
-		public List<StockDataDto> toDtoList(List<StockData> stockDataList) {
-				if (stockDataList == null) {
-						return new ArrayList<>();
-				}
-
-				return stockDataList.stream()
-						.map(this::toDto)
-						.collect(Collectors.toList());
-		}
-
-		/**
-		 * Converts a list of StockDataDto to a list of StockData entities
-		 *
-		 * @param stockDataDtoList list of DTOs to convert
-		 * @return list of entities
-		 */
-		public List<StockData> toEntityList(List<StockDataDto> stockDataDtoList) {
-				if (stockDataDtoList == null) {
-						return new ArrayList<>();
-				}
-
-				return stockDataDtoList.stream()
-						.map(this::toEntity)
-						.collect(Collectors.toList());
 		}
 }

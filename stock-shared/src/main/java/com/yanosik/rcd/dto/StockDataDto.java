@@ -6,6 +6,7 @@ import lombok.Value;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,7 +31,7 @@ public class StockDataDto implements Serializable {
 		 */
 		@Value
 		public static class StockPriceDto implements Serializable {
-				LocalDateTime timestamp;
+				LocalDate timestamp;
 				BigDecimal open;
 				BigDecimal high;
 				BigDecimal low;
@@ -39,7 +40,7 @@ public class StockDataDto implements Serializable {
 
 				@JsonCreator
 				public StockPriceDto(
-						@JsonProperty("timestamp") LocalDateTime timestamp,
+						@JsonProperty("timestamp") LocalDate timestamp,
 						@JsonProperty("open") BigDecimal open,
 						@JsonProperty("high") BigDecimal high,
 						@JsonProperty("low") BigDecimal low,

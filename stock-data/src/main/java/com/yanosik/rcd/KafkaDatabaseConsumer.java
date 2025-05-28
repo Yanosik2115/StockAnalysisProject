@@ -5,16 +5,16 @@ import com.yanosik.rcd.model.StockData;
 import com.yanosik.rcd.repository.StockDataRepository;
 import com.yanosik.rcd.parser.StockDataParser;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @AllArgsConstructor
 public class KafkaDatabaseConsumer {
-
-		private static final Logger log = LoggerFactory.getLogger(KafkaDatabaseConsumer.class);
 		private final StockDataRepository stockDataRepository;
 		private final StockDataParser stockDataParser;
 

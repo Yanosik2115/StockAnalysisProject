@@ -7,7 +7,7 @@ import lombok.Setter;
 import org.hibernate.proxy.HibernateProxy;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Objects;
 
 @Entity
@@ -18,7 +18,7 @@ public class StockPrice {
 		@GeneratedValue(strategy = GenerationType.SEQUENCE)
 		@Column(name = "id", nullable = false)
 		private Long id;
-		private LocalDateTime timestamp;
+		private LocalDate timestamp;
 
 		@JsonProperty("1. open")
 		private BigDecimal open;
@@ -30,6 +30,10 @@ public class StockPrice {
 		private BigDecimal close;
 		@JsonProperty("5. volume")
 		private BigDecimal volume;
+
+		@ManyToOne(optional = false)
+		@JoinColumn(name = "stock_data_id", nullable = false)
+		private StockData stockData;
 
 		@Override
 		public final boolean equals(Object object) {
