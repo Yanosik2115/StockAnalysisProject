@@ -17,9 +17,9 @@ import java.util.Map;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "analysisType")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "analysisFormat")
 @JsonSubTypes({
-		@JsonSubTypes.Type(value = StaticAnalysis.class, name = "STATIC"),
+		@JsonSubTypes.Type(value = StaticAnalysis.class, name = "VALUE"),
 		@JsonSubTypes.Type(value = PlotAnalysis.class, name = "PLOT"),
 		@JsonSubTypes.Type(value = TimeSeriesAnalysis.class, name = "TIME_SERIES")
 })
@@ -38,7 +38,7 @@ public abstract class Analysis {
 		// Metadata
 		private LocalDateTime calculatedAt;
 		private String calculatedBy;
-		private Map<String, Object> parameters;
+		private Map<String, String> parameters;
 
 		// Status and validation
 		private AnalysisStatus status;

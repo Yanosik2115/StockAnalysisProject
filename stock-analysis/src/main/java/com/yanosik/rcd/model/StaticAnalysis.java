@@ -1,5 +1,6 @@
 package com.yanosik.rcd.model;
 
+import com.yanosik.rcd.model.Analysis;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,7 +16,7 @@ public class StaticAnalysis extends Analysis {
 
 		private Double value;
 		private String unit;
-		private String interpretation; // e.g., "Bullish", "Bearish", "Neutral"
+		private String interpretation;
 
 		private Double confidenceLevel;
 		private Double upperBound;

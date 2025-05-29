@@ -1,13 +1,16 @@
 package com.yanosik.rcd.controller;
 
+import com.yanosik.rcd.model.Analysis;
 import com.yanosik.rcd.model.AnalysisType;
 import com.yanosik.rcd.service.AnalysisOrchestrator;
+import com.yanosik.rcd.service.RedisCacheService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 
 @Slf4j
@@ -17,6 +20,13 @@ import java.util.Map;
 public class StockAnalysisController {
 
 		private final AnalysisOrchestrator analysisOrchestrator;
+		private final RedisCacheService redisCacheService;
+
+//		@GetMapping("/{analysisId}")
+//		public ResponseEntity<Analysis> getAnalysis(@PathVariable String analysisId) {
+//				Optional<Analysis> analysis = redisCacheService.getStockData(analysisId);
+//				return analysis.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+//		}
 
 		@PostMapping("/trigger/{symbol}/{analysisType}")
 		public ResponseEntity<Map<String, String>> triggerSpecificAnalysis(
