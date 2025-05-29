@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public interface StockDataRepository extends JpaRepository<StockData, Long> {
 		StockData findStockDataByStockMetadata_Symbol(String symbol);
 
+
 		@Query("""
 				SELECT DISTINCT sd FROM StockData sd\s
 				LEFT JOIN FETCH sd.stockMetadata sm\s

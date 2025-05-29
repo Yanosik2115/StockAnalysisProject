@@ -36,31 +36,15 @@ public class StockDataController {
 				}
 		}
 
-		@GetMapping("/get/{symbol}")
-		public ResponseEntity<StockDataDto> getStockBetween(@PathVariable("symbol") String symbol,
+		@GetMapping("/get/between")
+		public ResponseEntity<StockDataDto> getStockBetween(@RequestParam("symbol") String symbol,
 		                                                    @RequestParam("startDate") LocalDate startDate,
 		                                                    @RequestParam("endDate") LocalDate endDate) {
-				StockData stockData = stockDataRepository.findStockDataByStockMetadata_Symbol(symbol);
-
+				StockData stockData = stockDataRepository.findStockDataWithFilteredPrices(symbol, startDate, endDate);
 				if (stockData != null) {
-						List<StockPrice> filteredPrices = stockData.getStockPrices().stream()
-								.filter(stockPrice -> {
-										LocalDate priceDate = stockPrice.getTimestamp(); // Assuming timestamp is LocalDateTime
-										return (priceDate.isEqual(startDate) || priceDate.isAfter(startDate)) &&
-												(priceDate.isEqual(endDate) || priceDate.isBefore(endDate));
-								})
-								.collect(Collectors.toList());
-
-						if (!filteredPrices.isEmpty()) {
-								stockData.setStockPrices(filteredPrices);
-								log.info("Stock data retrieved for symbol: {} with {} prices in date range",
-										symbol, filteredPrices.size());
-								StockDataDto stockDataDto = stockDataParser.toDto(stockData);
-								return ResponseEntity.ok(stockDataDto);
-						} else {
-								log.info("No stock data found for symbol: {} in the specified date range", symbol);
-								return ResponseEntity.noContent().build();
-						}
+						log.info("Stock data retrieved for symbol: {} between {} and {}", symbol, startDate, endDate);
+						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
+						return ResponseEntity.ok(stockDataDto);
 				} else {
 						log.info("No stock data found for symbol: {}", symbol);
 						return ResponseEntity.noContent().build();

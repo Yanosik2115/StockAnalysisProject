@@ -2,6 +2,7 @@ package com.yanosik.rcd.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Setter;
 import lombok.Value;
 
 import java.io.Serializable;

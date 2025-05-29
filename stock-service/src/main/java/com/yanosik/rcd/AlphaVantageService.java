@@ -14,8 +14,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class AlphaVantageService {
@@ -37,13 +41,53 @@ public class AlphaVantageService {
 				this.discoveryClient = discoveryClient;
 		}
 
-		public Mono<StockDataDto> fetchStockData(String symbol) {
+		public Mono<StockDataDto> fetchStockData(String symbol, LocalDate startDate, LocalDate endDate) {
 				log.info("Fetching stock data for symbol: {}", symbol);
 
-				return getStockDataServiceInstance()
-						.flatMap(serviceInstance -> fetchFromStockDataService(serviceInstance, symbol))
-						.switchIfEmpty(fetchStockDataFromApi(symbol))
-						.doOnError(error -> log.error("Error fetching stock data for {}: {}", symbol, error.getMessage()));
+				if (startDate == null || endDate == null) {
+						log.warn("Start date or end date is null, fetching latest stock data for symbol: {}", symbol);
+						return getStockDataServiceInstance()
+								.flatMap(serviceInstance -> fetchFromStockDataService(serviceInstance, symbol))
+								.switchIfEmpty(fetchStockDataFromApi(symbol))
+								.doOnError(error -> log.error("Error fetching stock data for {}: {}", symbol, error.getMessage()));
+				} else {
+						log.info("Fetching stock data for symbol: {} from {} to {}", symbol, startDate, endDate);
+						return getStockDataServiceInstance()
+								.flatMap(serviceInstance -> fetchFromStockDataServiceBetween(serviceInstance, symbol, startDate, endDate))
+								.switchIfEmpty(
+										fetchStockDataFromApi(symbol)
+												.mapNotNull(stockDataDto -> filterStockDataByDateRange(stockDataDto, startDate, endDate))
+								)
+								.doOnError(error -> log.error("Error fetching stock data for {}: {}", symbol, error.getMessage()));
+				}
+		}
+
+		private StockDataDto filterStockDataByDateRange(StockDataDto stockDataDto, LocalDate startDate, LocalDate endDate) {
+				if (stockDataDto == null) {
+						log.warn("Received null stock data for filtering");
+						return null;
+				}
+
+				if (stockDataDto.getStockPrices() == null || stockDataDto.getStockPrices().isEmpty()) {
+						log.warn("No stock prices available for filtering between {} and {}", startDate, endDate);
+						return stockDataDto;
+				}
+
+				List<StockDataDto.StockPriceDto> filteredStockPrices = stockDataDto.getStockPrices().stream()
+						.filter(stockPrice -> {
+								if (stockPrice.getTimestamp() == null) {
+										log.warn("Found stock price with null timestamp, excluding from results");
+										return false;
+								}
+								LocalDate date = stockPrice.getTimestamp();
+								return !date.isBefore(startDate) && !date.isAfter(endDate);
+						})
+						.collect(Collectors.toList());
+
+				log.info("Filtered stock data from {} entries to {} entries for date range {} to {}",
+						stockDataDto.getStockPrices().size(), filteredStockPrices.size(), startDate, endDate);
+
+				return new StockDataDto(filteredStockPrices, stockDataDto.getStockMetadata());
 		}
 
 		private Mono<ServiceInstance> getStockDataServiceInstance() {
@@ -62,7 +106,24 @@ public class AlphaVantageService {
 						.queryParam("symbol", symbol)
 						.build()
 						.toUriString();
+				return executeServiceCall(uri, symbol)
+						.doOnError(error -> log.error("Error fetching stock data for {}: {}", symbol, error.getMessage()));
 
+		}
+
+		private Mono<StockDataDto> fetchFromStockDataServiceBetween(ServiceInstance serviceInstance, String symbol, LocalDate startDate, LocalDate endDate) {
+				String uri = UriComponentsBuilder.fromUri(serviceInstance.getUri())
+						.path("/stock-data/get/between")
+						.queryParam("symbol", symbol)
+						.queryParam("startDate", startDate)
+						.queryParam("endDate", endDate)
+						.build()
+						.toUriString();
+				return executeServiceCall(uri, symbol)
+						.doOnError(error -> log.error("Error fetching stock data for {}: {}", symbol, error.getMessage()));
+		}
+
+		private Mono<StockDataDto> executeServiceCall(String uri, String symbol) {
 				return webClient.get()
 						.uri(uri)
 						.retrieve()

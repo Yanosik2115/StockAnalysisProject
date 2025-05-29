@@ -18,6 +18,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/v1/stock")
 public class StockController {
 		private final AlphaVantageService alphaVantageService;
+
 		public StockController(AlphaVantageService alphaVantageService) {
 				this.alphaVantageService = alphaVantageService;
 		}
@@ -26,7 +27,7 @@ public class StockController {
 		public Mono<ResponseEntity<StockDataDto>> getStockData(@RequestParam("symbol") String symbol,
 		                                                       @Nullable @RequestParam("startDate") LocalDate startDate,
 		                                                       @Nullable @RequestParam("endDate") LocalDate endDate) {
-				return alphaVantageService.fetchStockData(symbol)
+				return alphaVantageService.fetchStockData(symbol, startDate, endDate)
 						.map(data -> ResponseEntity.ok()
 								.contentType(MediaType.APPLICATION_JSON)
 								.body(data))
