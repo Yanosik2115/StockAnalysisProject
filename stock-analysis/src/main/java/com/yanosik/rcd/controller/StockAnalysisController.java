@@ -22,11 +22,11 @@ public class StockAnalysisController {
 		private final AnalysisOrchestrator analysisOrchestrator;
 		private final RedisCacheService redisCacheService;
 
-//		@GetMapping("/{analysisId}")
-//		public ResponseEntity<Analysis> getAnalysis(@PathVariable String analysisId) {
-//				Optional<Analysis> analysis = redisCacheService.getStockData(analysisId);
-//				return analysis.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-//		}
+		@GetMapping("/{analysisId}")
+		public ResponseEntity<Analysis> getAnalysis(@PathVariable String analysisId) {
+				Optional<Analysis> analysis = redisCacheService.getAnalysisResult(analysisId);
+				return analysis.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+		}
 
 		@PostMapping("/trigger/{symbol}/{analysisType}")
 		public ResponseEntity<Map<String, String>> triggerSpecificAnalysis(
