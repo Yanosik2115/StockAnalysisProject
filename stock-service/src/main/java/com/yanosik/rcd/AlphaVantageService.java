@@ -24,7 +24,6 @@ public class AlphaVantageService {
 		private final KafkaTemplate<String, StockDataDto> kafkaTemplate;
 		private final WebClient webClient;
 		private final DiscoveryClient discoveryClient;
-		private final StockDataDtoParser stockDataDtoParser;
 
 
 		@Value("${ALPHAVANTAGE_API_KEY}")
@@ -32,11 +31,10 @@ public class AlphaVantageService {
 
 		public AlphaVantageService(KafkaTemplate<String, StockDataDto> kafkaTemplate,
 		                           WebClient webClient,
-		                           DiscoveryClient discoveryClient, StockDataDtoParser stockDataDtoParser) {
+		                           DiscoveryClient discoveryClient) {
 				this.kafkaTemplate = kafkaTemplate;
 				this.webClient = webClient;
 				this.discoveryClient = discoveryClient;
-				this.stockDataDtoParser = stockDataDtoParser;
 		}
 
 		public Mono<StockDataDto> fetchStockData(String symbol) {

@@ -10,6 +10,11 @@ spring:
           uri: lb://stock-service
           predicates:
             - Path=/api/v1/stock/**
+
+        - id: stock-analysis
+          uri: lb://stock-analysis
+          predicates:
+            - Path=/api/v1/analysis/**
         
         - id: stock-data-internal
           uri: lb://stock-data

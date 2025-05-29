@@ -1,6 +1,5 @@
 package com.yanosik.rcd.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
@@ -11,8 +10,10 @@ public enum AnalysisType {
 		VOLATILITY_ANALYSIS("volatility_analysis"),
 		MOVING_AVERAGE("moving_average"),
 		RSI_ANALYSIS("rsi_analysis"),
-		MACD_ANALYSIS("macd_analysis");
+		MACD_ANALYSIS("macd_analysis"),
+		SMA("stock_analysis_sma");
 		private final String topicName;
+
 		AnalysisType(String topicName) {
 				this.topicName = topicName;
 		}

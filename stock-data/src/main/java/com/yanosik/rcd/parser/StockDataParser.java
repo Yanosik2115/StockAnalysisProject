@@ -10,9 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Mapper class for converting between StockData entity and StockDataDto
- */
 @Component
 public class StockDataParser {
 
@@ -44,36 +41,6 @@ public class StockDataParser {
 
 				List<StockPrice> stockPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices(), stockData);
 				stockData.setStockPrices(stockPrices);
-
-				return stockData;
-		}
-
-		public StockData updateEntityFromDto(StockData stockData, StockDataDto stockDataDto) {
-				if (stockData == null || stockDataDto == null) {
-						return stockData;
-				}
-
-				if (stockDataDto.getStockMetadata() != null) {
-						if (stockData.getStockMetadata() == null) {
-								StockMetadata newMetadata = new StockMetadata();
-								stockData.setStockMetadata(newMetadata);
-						}
-						updateStockMetadataFromDto(stockData.getStockMetadata(), stockDataDto.getStockMetadata());
-				}
-
-				// Update stock prices - replace existing list while maintaining relationships
-				if (stockDataDto.getStockPrices() != null) {
-						// Clear existing prices
-						if (stockData.getStockPrices() != null) {
-								stockData.getStockPrices().clear();
-						} else {
-								stockData.setStockPrices(new ArrayList<>());
-						}
-
-						// Add new prices with proper relationships
-						List<StockPrice> updatedPrices = mapStockPriceDtosToEntities(stockDataDto.getStockPrices(), stockData);
-						stockData.getStockPrices().addAll(updatedPrices);
-				}
 
 				return stockData;
 		}
@@ -131,9 +98,7 @@ public class StockDataParser {
 						.collect(Collectors.toList());
 		}
 
-		/**
-		 * FIXED: Converts StockPriceDto to StockPrice entity with proper parent reference
-		 */
+
 		private StockPrice mapStockPriceDtoToEntity(StockDataDto.StockPriceDto stockPriceDto, StockData parentStockData) {
 				if (stockPriceDto == null) {
 						return null;
@@ -166,15 +131,4 @@ public class StockDataParser {
 				return stockMetadata;
 		}
 
-		private void updateStockMetadataFromDto(StockMetadata stockMetadata, StockDataDto.StockMetadataDto stockMetadataDto) {
-				if (stockMetadata == null || stockMetadataDto == null) {
-						return;
-				}
-
-				stockMetadata.setInformation(stockMetadataDto.getInformation());
-				stockMetadata.setSymbol(stockMetadataDto.getSymbol());
-				stockMetadata.setLastRefreshed(stockMetadataDto.getLastRefreshed());
-				stockMetadata.setInterval(stockMetadataDto.getInterval());
-				stockMetadata.setOutputSize(stockMetadataDto.getOutputSize());
-		}
 }
