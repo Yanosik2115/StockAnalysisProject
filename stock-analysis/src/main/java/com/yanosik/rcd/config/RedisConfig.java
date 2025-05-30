@@ -6,6 +6,7 @@ import com.yanosik.rcd.model.Analysis;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -27,8 +28,7 @@ public class RedisConfig {
 		}
 
 		@Bean
-		@Qualifier("redisTemplate")
-		public RedisTemplate<String, Object> redisTemplate(ObjectMapper objectMapper) {
+		public RedisTemplate<String, Object> analysisStatusRedisTemplate(ObjectMapper objectMapper) {
 				RedisTemplate<String, Object> template = new RedisTemplate<>();
 				template.setConnectionFactory(redisConnectionFactory());
 

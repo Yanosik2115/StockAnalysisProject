@@ -3,6 +3,7 @@ package com.yanosik.rcd.service;
 import com.yanosik.rcd.dto.StockDataDto;
 import com.yanosik.rcd.model.AnalysisRequest;
 import com.yanosik.rcd.model.CompleteAnalysisRequest;
+import com.yanosik.rcd.service.redis.StockDataDtoCacheService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,7 +18,7 @@ import java.util.concurrent.TimeoutException;
 @Component
 @AllArgsConstructor
 public class CorrelatedAnalysisConsumer {
-		private final RedisCacheService cacheService;
+		private final StockDataDtoCacheService stockDataDtoCacheService;
 		private final KafkaTemplate<String, CompleteAnalysisRequest> kafkaTemplate;
 
 		@KafkaListener(topics = "stock_analysis_requests", groupId = "stockAnalysisGroup")
@@ -46,7 +47,7 @@ public class CorrelatedAnalysisConsumer {
 				long pollIntervalMillis = 1000L;
 
 				while (System.currentTimeMillis() - startTime < timeoutMillis) {
-						Optional<StockDataDto> data = cacheService.getStockData(requestId);
+						Optional<StockDataDto> data = stockDataDtoCacheService.get(requestId);
 
 						if (data.isPresent()) {
 								return data.get();
