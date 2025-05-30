@@ -140,9 +140,10 @@ public class SMAAnalysisService extends BaseAnalysisService {
 		private CompletableFuture<List<TimeSeriesPoint>> calculateSMA(AnalysisRequest analysisRequest) {
 				LocalDate startDate = LocalDate.parse(analysisRequest.parameters().get("startDate"));
 				LocalDate endDate = LocalDate.parse(analysisRequest.parameters().get("endDate"));
-				int period = Integer.parseInt(analysisRequest.parameters().get("period"));
-
-				LocalDate fetchStartDate = startDate.minusDays(period + 7);
+				int smaPeriod = Integer.parseInt(analysisRequest.parameters().get("period"));
+				int additionalWeeksNeeded = Math.floorDiv(smaPeriod, 5) * 7;
+				log.info("Additional weeks needed for SMA calculation: {}", additionalWeeksNeeded);
+				LocalDate fetchStartDate = startDate.minusDays(additionalWeeksNeeded);
 
 				return requestStockDataAsync(analysisRequest.symbol(), fetchStartDate, endDate)
 						.thenApply(stockDataDto -> {
@@ -151,6 +152,11 @@ public class SMAAnalysisService extends BaseAnalysisService {
 										return Collections.<TimeSeriesPoint>emptyList();
 								}
 
+								if (stockDataDto.getStockPrices().size() < smaPeriod + startDate.until(endDate).getDays()) {
+										log.warn("Not enough stock prices available for SMA calculation for symbol: {}. Required: {}, Available: {}",
+												analysisRequest.symbol(), smaPeriod + startDate.until(endDate).getDays(), stockDataDto.getStockPrices().size());
+										return Collections.<TimeSeriesPoint>emptyList();
+								}
 								List<StockDataDto.StockPriceDto> stockPrices = stockDataDto.getStockPrices();
 								stockPrices.sort(Comparator.comparing(StockDataDto.StockPriceDto::getTimestamp));
 
@@ -165,10 +171,10 @@ public class SMAAnalysisService extends BaseAnalysisService {
 								for (int i = indexOfStartDate; i < stockPrices.size(); i++) {
 										LocalDate currentDate = stockPrices.get(i).getTimestamp();
 										double sum = 0.0;
-										for (int j = i - period + 1; j <= i; j++) {
+										for (int j = i - smaPeriod + 1; j <= i; j++) {
 												sum += stockPrices.get(j).getClose().doubleValue();
 										}
-										double smaValue = sum / period;
+										double smaValue = sum / smaPeriod;
 
 										TimeSeriesPoint smaPoint = TimeSeriesPoint.builder()
 												.timestamp(currentDate.atStartOfDay())
