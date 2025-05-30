@@ -15,6 +15,4 @@ import java.util.Map;
 public class TimeSeriesPoint {
 		private LocalDateTime timestamp;
 		private Double value;
-		private Double volume;
-		private Map<String, Object> attributes;
 }

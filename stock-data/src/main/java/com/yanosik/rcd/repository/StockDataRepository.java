@@ -21,13 +21,12 @@ public interface StockDataRepository extends JpaRepository<StockData, Long> {
 				LEFT JOIN FETCH sd.stockPrices sp\s
 				WHERE sm.symbol = :symbol\s
 				AND sp.timestamp >= :startDate\s
-				AND sp.timestamp <= :endDate
-				ORDER BY sp.timestamp ASC
+				AND sp.timestamp <= :endDate\s
+				ORDER BY sp.timestamp ASC\s
 				""")
 		StockData findStockDataWithFilteredPrices(
 				@Param("symbol") String symbol,
 				@Param("startDate") LocalDate startDate,
 				@Param("endDate") LocalDate endDate
 		);
-
 }

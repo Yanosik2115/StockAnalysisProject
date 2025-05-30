@@ -28,10 +28,6 @@ public class TimeSeriesAnalysis extends Analysis {
 		private Double trendStrength;
 		private List<TrendChangePoint> changePoints;
 
-		// Seasonality
-		private Boolean hasSeasonality;
-		private Integer seasonalPeriod;
-
 		// Forecasting
 		private List<ForecastPoint> forecast;
 		private Integer forecastHorizon;
