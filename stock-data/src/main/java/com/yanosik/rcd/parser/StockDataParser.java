@@ -5,6 +5,8 @@ import com.yanosik.rcd.model.StockData;
 import com.yanosik.rcd.model.StockMetadata;
 import com.yanosik.rcd.model.StockPrice;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,18 +15,17 @@ import java.util.stream.Collectors;
 @Component
 public class StockDataParser {
 
-		public StockDataDto toDto(StockData stockData) {
+		public static StockDataDto toDto(StockData stockData) {
 				if (stockData == null) {
 						return null;
 				}
 
 				List<StockDataDto.StockPriceDto> stockPriceDtos = mapStockPricesToDtos(stockData.getStockPrices());
 				StockDataDto.StockMetadataDto stockMetadataDto = mapStockMetadataToDto(stockData.getStockMetadata());
-
 				return new StockDataDto(stockPriceDtos, stockMetadataDto);
 		}
 
-		public StockData toEntity(StockDataDto stockDataDto) {
+		public static StockData toEntity(StockDataDto stockDataDto) {
 				if (stockDataDto == null) {
 						return null;
 				}
@@ -46,18 +47,18 @@ public class StockDataParser {
 		}
 
 
-		private List<StockDataDto.StockPriceDto> mapStockPricesToDtos(List<StockPrice> stockPrices) {
+		private static List<StockDataDto.StockPriceDto> mapStockPricesToDtos(List<StockPrice> stockPrices) {
 				if (stockPrices == null) {
 						return new ArrayList<>();
 				}
 
 				return stockPrices.stream()
-						.map(this::mapStockPriceToDto)
+						.map(StockDataParser::mapStockPriceToDto)
 						.collect(Collectors.toList());
 		}
 
 
-		private StockDataDto.StockPriceDto mapStockPriceToDto(StockPrice stockPrice) {
+		private static StockDataDto.StockPriceDto mapStockPriceToDto(StockPrice stockPrice) {
 				if (stockPrice == null) {
 						return null;
 				}
@@ -73,7 +74,7 @@ public class StockDataParser {
 		}
 
 
-		private StockDataDto.StockMetadataDto mapStockMetadataToDto(StockMetadata stockMetadata) {
+		private static StockDataDto.StockMetadataDto mapStockMetadataToDto(StockMetadata stockMetadata) {
 				if (stockMetadata == null) {
 						return null;
 				}
@@ -88,7 +89,7 @@ public class StockDataParser {
 		}
 
 
-		private List<StockPrice> mapStockPriceDtosToEntities(List<StockDataDto.StockPriceDto> stockPriceDtos, StockData parentStockData) {
+		private static List<StockPrice> mapStockPriceDtosToEntities(List<StockDataDto.StockPriceDto> stockPriceDtos, StockData parentStockData) {
 				if (stockPriceDtos == null) {
 						return new ArrayList<>();
 				}
@@ -99,7 +100,7 @@ public class StockDataParser {
 		}
 
 
-		private StockPrice mapStockPriceDtoToEntity(StockDataDto.StockPriceDto stockPriceDto, StockData parentStockData) {
+		private static StockPrice mapStockPriceDtoToEntity(StockDataDto.StockPriceDto stockPriceDto, StockData parentStockData) {
 				if (stockPriceDto == null) {
 						return null;
 				}
@@ -116,7 +117,7 @@ public class StockDataParser {
 				return stockPrice;
 		}
 
-		private StockMetadata mapStockMetadataDtoToEntity(StockDataDto.StockMetadataDto stockMetadataDto) {
+		private static StockMetadata mapStockMetadataDtoToEntity(StockDataDto.StockMetadataDto stockMetadataDto) {
 				if (stockMetadataDto == null) {
 						return null;
 				}

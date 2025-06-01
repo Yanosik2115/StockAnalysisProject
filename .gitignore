@@ -39,3 +39,4 @@ build/
 /stock-service/.env
 /.jpb/
 /.idea/
+/stock-data/.env

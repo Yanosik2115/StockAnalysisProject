@@ -5,6 +5,7 @@ import com.yanosik.rcd.model.StockData;
 import com.yanosik.rcd.model.StockPrice;
 import com.yanosik.rcd.repository.StockDataRepository;
 import com.yanosik.rcd.parser.StockDataParser;
+import com.yanosik.rcd.service.StockDataService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +20,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/stock-data")
 public class StockDataController {
-		private final StockDataRepository stockDataRepository;
-		private final StockDataParser stockDataParser;
+		private final StockDataService stockDataService;
 
 		@GetMapping("/get")
 		public ResponseEntity<StockDataDto> getStock(@RequestParam("symbol") String symbol) {
-				StockData stockData = stockDataRepository.findStockDataByStockMetadata_Symbol(symbol);
-
+				StockDataDto stockData = stockDataService.fetchStockData(symbol);
 				if (stockData != null) {
 						log.info("Stock data retrieved for symbol: {}", symbol);
-						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
-						return ResponseEntity.ok(stockDataDto);
+						return ResponseEntity.ok(stockData);
 				} else {
 						log.info("No stock data found for symbol: {}", symbol);
 						return ResponseEntity.noContent().build();
@@ -40,11 +38,10 @@ public class StockDataController {
 		public ResponseEntity<StockDataDto> getStockBetween(@RequestParam("symbol") String symbol,
 		                                                    @RequestParam("startDate") LocalDate startDate,
 		                                                    @RequestParam("endDate") LocalDate endDate) {
-				StockData stockData = stockDataRepository.findStockDataWithFilteredPrices(symbol, startDate, endDate);
+				StockDataDto stockData = stockDataService.fetchStockDataBetween(symbol, startDate, endDate);
 				if (stockData != null) {
 						log.info("Stock data retrieved for symbol: {} between {} and {}", symbol, startDate, endDate);
-						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
-						return ResponseEntity.ok(stockDataDto);
+						return ResponseEntity.ok(stockData);
 				} else {
 						log.info("No stock data found for symbol: {}", symbol);
 						return ResponseEntity.noContent().build();

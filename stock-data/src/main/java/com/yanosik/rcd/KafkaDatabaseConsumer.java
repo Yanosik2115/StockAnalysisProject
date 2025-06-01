@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class KafkaDatabaseConsumer {
 		private final StockDataRepository stockDataRepository;
-		private final StockDataParser stockDataParser;
 		private final RedisStockDataDtoCacheService redisCacheService;
 		private final KafkaTemplate<String, StockDataResponse> kafkaTemplate;
 
@@ -30,7 +29,7 @@ public class KafkaDatabaseConsumer {
 		)
 		public void consume(StockDataDto stockDataDto) {
 				log.info("Event message received: {}", stockDataDto);
-				StockData stockData = stockDataParser.toEntity(stockDataDto);
+				StockData stockData = StockDataParser.toEntity(stockDataDto);
 				stockDataRepository.save(stockData);
 		}
 
@@ -54,7 +53,7 @@ public class KafkaDatabaseConsumer {
 								return;
 						}
 
-						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
+						StockDataDto stockDataDto = StockDataParser.toDto(stockData);
 
 						redisCacheService.save(stockDataRequest.requestId(), stockDataDto);
 
@@ -89,7 +88,7 @@ public class KafkaDatabaseConsumer {
 								return;
 						}
 
-						StockDataDto stockDataDto = stockDataParser.toDto(stockData);
+						StockDataDto stockDataDto = StockDataParser.toDto(stockData);
 						StockDataResponse stockDataResponse = new StockDataResponse(
 								stockDataRequest.requestId(),
 								stockDataRequest.symbol(),

@@ -13,10 +13,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -28,26 +27,27 @@ public class SMAAnalysisService extends BaseAnalysisService {
 		}
 
 		private final KafkaTemplate<String, StockDataRequest> kafkaTemplate;
-		private final Map<String, CompletableFuture<StockDataDto>> pendingRequests = new ConcurrentHashMap<>();
+		private final Map<String, StockDataResponseHolder> pendingRequests = new ConcurrentHashMap<>();
+
 
 		@KafkaListener(topics = "stock_data_responses", groupId = "stockAnalysisGroup")
 		public void handleStockDataResponse(StockDataResponse response) {
-				CompletableFuture<StockDataDto> future = pendingRequests.remove(response.requestId());
+				StockDataResponseHolder holder = pendingRequests.remove(response.requestId());
 				log.info("Received stock data response for requestId: {}", response.requestId());
-				if (future != null) {
+				if (holder != null) {
 						if ("SUCCESS".equals(response.status())) {
-								future.complete(response.stockData());
+								holder.complete(response.stockData());
 						} else {
-								future.completeExceptionally(new RuntimeException("Failed to fetch stock data: " + response.status()));
+								holder.completeExceptionally(response.status());
 						}
 				}
 		}
 
-		public CompletableFuture<StockDataDto> requestStockDataAsync(String symbol, LocalDate startDate, LocalDate endDate) {
+		public StockDataDto requestStockDataSync(String symbol, LocalDate startDate, LocalDate endDate) throws InterruptedException {
 				String requestId = Utilities.generateId();
-				CompletableFuture<StockDataDto> future = new CompletableFuture<>();
-				future.orTimeout(30, TimeUnit.SECONDS);
-				pendingRequests.put(requestId, future);
+				StockDataResponseHolder holder = new StockDataResponseHolder();
+				pendingRequests.put(requestId, holder);
+
 				StockDataRequest request = new StockDataRequest(
 						requestId,
 						symbol,
@@ -55,7 +55,8 @@ public class SMAAnalysisService extends BaseAnalysisService {
 						endDate
 				);
 				kafkaTemplate.send("stock_data_request_internal", requestId, request);
-				return future;
+
+				return holder.getResult(30, TimeUnit.SECONDS);
 		}
 
 		@KafkaListener(topics = "stock_analysis_sma", groupId = "stockAnalysisGroup")
@@ -74,55 +75,55 @@ public class SMAAnalysisService extends BaseAnalysisService {
 				return "SMA_Analysis_Service";
 		}
 
-
 		@Override
-		protected CompletableFuture<Analysis> performAnalysis(AnalysisRequest analysisRequest) {
+		protected Analysis performAnalysis(AnalysisRequest analysisRequest) {
 				log.info("Performing SMA analysis for request: {}", analysisRequest.requestId());
 				long startTimeMs = System.currentTimeMillis();
 				Map<String, String> parameters = analysisRequest.parameters();
 
-				return calculateSMA(analysisRequest).thenApply(smaPoints -> {
-								long calculationTimeMs = System.currentTimeMillis() - startTimeMs;
-								if (smaPoints.isEmpty()) {
-										log.warn("No SMA points calculated for request: {}", analysisRequest.requestId());
-										return TimeSeriesAnalysis.builder()
-												.id(analysisRequest.requestId())
-												.symbol(analysisRequest.symbol())
-												.startDate(LocalDate.parse(parameters.get("startDate")))
-												.calculatedBy(getServiceName())
-												.analysisType(getSupportedAnalysisType())
-												.parameters(parameters)
-												.status(AnalysisStatus.FAILED)
-												.calculationTimeMs(calculationTimeMs)
-												.build();
-								}
+				try {
+						List<TimeSeriesPoint> smaPoints = calculateSMA(analysisRequest);
+						long calculationTimeMs = System.currentTimeMillis() - startTimeMs;
 
-								return (Analysis) TimeSeriesAnalysis.builder()
-										.id(analysisRequest.requestId())
-										.symbol(analysisRequest.symbol())
-										.startDate(LocalDate.parse(parameters.get("startDate")))
-										.calculatedBy(getServiceName())
-										.timeSeries(smaPoints)
-										.analysisType(getSupportedAnalysisType())
-										.parameters(parameters)
-										.status(AnalysisStatus.COMPLETED)
-										.calculationTimeMs(calculationTimeMs)
-										.build();
-						})
-						.exceptionally(ex -> {
-								long calculationTimeMs = System.currentTimeMillis() - startTimeMs;
-								log.error("Error performing SMA analysis for request: {}", analysisRequest.requestId(), ex);
+						if (smaPoints.isEmpty()) {
+								log.warn("No SMA points calculated for request: {}", analysisRequest.requestId());
 								return TimeSeriesAnalysis.builder()
 										.id(analysisRequest.requestId())
 										.symbol(analysisRequest.symbol())
-										.startDate(LocalDate.parse(parameters.getOrDefault("startDate", LocalDate.now().toString())))
+										.startDate(LocalDate.parse(parameters.get("startDate")))
 										.calculatedBy(getServiceName())
 										.analysisType(getSupportedAnalysisType())
 										.parameters(parameters)
 										.status(AnalysisStatus.FAILED)
 										.calculationTimeMs(calculationTimeMs)
 										.build();
-						});
+						}
+
+						return TimeSeriesAnalysis.builder()
+								.id(analysisRequest.requestId())
+								.symbol(analysisRequest.symbol())
+								.startDate(LocalDate.parse(parameters.get("startDate")))
+								.calculatedBy(getServiceName())
+								.timeSeries(smaPoints)
+								.analysisType(getSupportedAnalysisType())
+								.parameters(parameters)
+								.status(AnalysisStatus.COMPLETED)
+								.calculationTimeMs(calculationTimeMs)
+								.build();
+				} catch (Exception ex) {
+						long calculationTimeMs = System.currentTimeMillis() - startTimeMs;
+						log.error("Error performing SMA analysis for request: {}", analysisRequest.requestId(), ex);
+						return TimeSeriesAnalysis.builder()
+								.id(analysisRequest.requestId())
+								.symbol(analysisRequest.symbol())
+								.startDate(LocalDate.parse(parameters.getOrDefault("startDate", LocalDate.now().toString())))
+								.calculatedBy(getServiceName())
+								.analysisType(getSupportedAnalysisType())
+								.parameters(parameters)
+								.status(AnalysisStatus.FAILED)
+								.calculationTimeMs(calculationTimeMs)
+								.build();
+				}
 		}
 
 		@Override
@@ -130,14 +131,14 @@ public class SMAAnalysisService extends BaseAnalysisService {
 				Map<String, String> parameters = analysisRequest.parameters();
 
 				if (!parameters.containsKey("startDate") || !parameters.containsKey("endDate") || !parameters.containsKey("period")) {
-						log.warn("Missing 'startDate' parameter for SMA analysis");
+						log.warn("Missing required parameters for SMA analysis (startDate, endDate, period)");
 						return false;
 				}
 
 				return true;
 		}
 
-		private CompletableFuture<List<TimeSeriesPoint>> calculateSMA(AnalysisRequest analysisRequest) {
+		private List<TimeSeriesPoint> calculateSMA(AnalysisRequest analysisRequest) throws InterruptedException {
 				LocalDate startDate = LocalDate.parse(analysisRequest.parameters().get("startDate"));
 				LocalDate endDate = LocalDate.parse(analysisRequest.parameters().get("endDate"));
 				int smaPeriod = Integer.parseInt(analysisRequest.parameters().get("period"));
@@ -145,54 +146,50 @@ public class SMAAnalysisService extends BaseAnalysisService {
 				log.info("Additional weeks needed for SMA calculation: {}", additionalWeeksNeeded);
 				LocalDate fetchStartDate = startDate.minusDays(additionalWeeksNeeded);
 
-				return requestStockDataAsync(analysisRequest.symbol(), fetchStartDate, endDate)
-						.thenApply(stockDataDto -> {
-								if (stockDataDto == null || stockDataDto.getStockPrices() == null || stockDataDto.getStockPrices().isEmpty()) {
-										log.warn("No stock data available for symbol: {}", analysisRequest.symbol());
-										return Collections.<TimeSeriesPoint>emptyList();
-								}
+				StockDataDto stockDataDto = requestStockDataSync(analysisRequest.symbol(), fetchStartDate, endDate);
 
-								if (stockDataDto.getStockPrices().size() < smaPeriod + startDate.until(endDate).getDays()) {
-										log.warn("Not enough stock prices available for SMA calculation for symbol: {}. Required: {}, Available: {}",
-												analysisRequest.symbol(), smaPeriod + startDate.until(endDate).getDays(), stockDataDto.getStockPrices().size());
-										return Collections.<TimeSeriesPoint>emptyList();
-								}
-								List<StockDataDto.StockPriceDto> stockPrices = stockDataDto.getStockPrices();
-								stockPrices.sort(Comparator.comparing(StockDataDto.StockPriceDto::getTimestamp));
+				if (stockDataDto == null || stockDataDto.getStockPrices() == null || stockDataDto.getStockPrices().isEmpty()) {
+						log.warn("No stock data available for symbol: {}", analysisRequest.symbol());
+						return Collections.emptyList();
+				}
 
-								List<TimeSeriesPoint> smaPoints = new ArrayList<>();
-								int indexOfStartDate = stockPrices.indexOf(
-										stockPrices.stream()
-												.filter(price -> price.getTimestamp().equals(startDate))
-												.findFirst()
-												.orElse(null)
-								);
+				if (stockDataDto.getStockPrices().size() < smaPeriod + startDate.until(endDate).getDays()) {
+						log.warn("Not enough stock prices available for SMA calculation for symbol: {}. Required: {}, Available: {}",
+								analysisRequest.symbol(), smaPeriod + startDate.until(endDate).getDays(), stockDataDto.getStockPrices().size());
+						return Collections.emptyList();
+				}
 
-								for (int i = indexOfStartDate; i < stockPrices.size(); i++) {
-										LocalDate currentDate = stockPrices.get(i).getTimestamp();
-										double sum = 0.0;
-										for (int j = i - smaPeriod + 1; j <= i; j++) {
-												sum += stockPrices.get(j).getClose().doubleValue();
-										}
-										double smaValue = sum / smaPeriod;
+				List<StockDataDto.StockPriceDto> stockPrices = stockDataDto.getStockPrices();
+				stockPrices.sort(Comparator.comparing(StockDataDto.StockPriceDto::getTimestamp));
 
-										TimeSeriesPoint smaPoint = TimeSeriesPoint.builder()
-												.timestamp(currentDate.atStartOfDay())
-												.value(smaValue)
-												.build();
+				List<TimeSeriesPoint> smaPoints = new ArrayList<>();
+				int indexOfStartDate = stockPrices.indexOf(
+						stockPrices.stream()
+								.filter(price -> price.getTimestamp().equals(startDate))
+								.findFirst()
+								.orElse(null)
+				);
 
-										smaPoints.add(smaPoint);
-										log.info("Calculated SMA for date {}: {}", currentDate, smaValue);
-								}
-								log.info("Calculated {} SMA points for symbol {} from {} to {}",
-										smaPoints.size(), analysisRequest.symbol(), startDate, endDate);
+				for (int i = indexOfStartDate; i < stockPrices.size(); i++) {
+						LocalDate currentDate = stockPrices.get(i).getTimestamp();
+						double sum = 0.0;
+						for (int j = i - smaPeriod + 1; j <= i; j++) {
+								sum += stockPrices.get(j).getClose().doubleValue();
+						}
+						double smaValue = sum / smaPeriod;
 
-								return smaPoints;
-						})
-						.exceptionally(ex -> {
-								log.error("Error calculating SMA points: {}", ex.getMessage());
-								return Collections.emptyList();
-						});
+						TimeSeriesPoint smaPoint = TimeSeriesPoint.builder()
+								.timestamp(currentDate.atStartOfDay())
+								.value(smaValue)
+								.build();
+
+						smaPoints.add(smaPoint);
+						log.info("Calculated SMA for date {}: {}", currentDate, smaValue);
+				}
+
+				log.info("Calculated {} SMA points for symbol {} from {} to {}",
+						smaPoints.size(), analysisRequest.symbol(), startDate, endDate);
+
+				return smaPoints;
 		}
-
 }

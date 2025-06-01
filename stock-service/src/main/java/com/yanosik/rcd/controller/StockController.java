@@ -24,13 +24,9 @@ public class StockController {
 		}
 
 		@GetMapping("/get")
-		public Mono<ResponseEntity<StockDataDto>> getStockData(@RequestParam("symbol") String symbol,
-		                                                       @Nullable @RequestParam("startDate") LocalDate startDate,
-		                                                       @Nullable @RequestParam("endDate") LocalDate endDate) {
-				return alphaVantageService.fetchStockData(symbol, startDate, endDate)
-						.map(data -> ResponseEntity.ok()
-								.contentType(MediaType.APPLICATION_JSON)
-								.body(data))
-						.onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+		public ResponseEntity<StockDataDto> getStockData(@RequestParam("symbol") String symbol,
+		                                                 @Nullable @RequestParam("startDate") LocalDate startDate,
+		                                                 @Nullable @RequestParam("endDate") LocalDate endDate) {
+				return ResponseEntity.ok(alphaVantageService.fetchStockData(symbol, startDate, endDate));
 		}
 }

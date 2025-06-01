@@ -1,5 +1,6 @@
 package com.yanosik.rcd.model;
 
+import com.yanosik.rcd.dto.StockDataDto;
 import com.yanosik.rcd.enums.AnalysisStatus;
 import com.yanosik.rcd.utils.Utilities;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +9,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public abstract class BaseAnalysisService implements AnalysisService {
@@ -38,23 +40,48 @@ public abstract class BaseAnalysisService implements AnalysisService {
 
 				storeProcessingStatus(analysisRequest);
 
-				performAnalysis(analysisRequest)
-						.thenAccept(result -> {
-								log.info("Analysis completed successfully for requestId: {}", analysisRequest.requestId());
-								storeCompletedAnalysis(analysisRequest, result);
-						})
-						.exceptionally(ex -> {
-								log.error("Analysis failed for requestId: {}", analysisRequest.requestId(), ex);
-								storeFailedAnalysis(analysisRequest, ex.getMessage());
-								return null;
-						});
+				try {
+						Analysis result = performAnalysis(analysisRequest);
+						log.info("Analysis completed successfully for requestId: {}", analysisRequest.requestId());
+						storeCompletedAnalysis(analysisRequest, result);
+				} catch (Exception ex) {
+						log.error("Analysis failed for requestId: {}", analysisRequest.requestId(), ex);
+						storeFailedAnalysis(analysisRequest, ex.getMessage());
+				}
 		}
 
-		protected abstract CompletableFuture<Analysis> performAnalysis(AnalysisRequest analysisRequest);
+		protected abstract Analysis performAnalysis(AnalysisRequest analysisRequest);
 
 		protected abstract boolean validateSpecificParameters(AnalysisRequest analysisRequest);
 
 		protected abstract String getServiceName();
+
+		public static class StockDataResponseHolder {
+				private final CountDownLatch latch = new CountDownLatch(1);
+				private StockDataDto stockData;
+				private String errorStatus;
+
+				public void complete(StockDataDto stockData) {
+						this.stockData = stockData;
+						latch.countDown();
+				}
+
+				public void completeExceptionally(String errorStatus) {
+						this.errorStatus = errorStatus;
+						latch.countDown();
+				}
+
+				public StockDataDto getResult(long timeout, TimeUnit timeUnit) throws InterruptedException {
+						if (latch.await(timeout, timeUnit)) {
+								if (errorStatus != null) {
+										throw new RuntimeException("Failed to fetch stock data: " + errorStatus);
+								}
+								return stockData;
+						} else {
+								throw new RuntimeException("Request timed out after " + timeout + " " + timeUnit.name().toLowerCase());
+						}
+				}
+		}
 
 		@Override
 		public boolean isValidRequest(AnalysisRequest analysisRequest) {
