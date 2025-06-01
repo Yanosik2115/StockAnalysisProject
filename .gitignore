@@ -40,3 +40,4 @@ build/
 /.jpb/
 /.idea/
 /stock-data/.env
+/frontend/node_modules/

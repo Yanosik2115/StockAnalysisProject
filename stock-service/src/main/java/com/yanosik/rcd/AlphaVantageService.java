@@ -1,6 +1,7 @@
 package com.yanosik.rcd;
 
 import com.yanosik.rcd.dto.StockDataDto;
+import com.yanosik.rcd.model.StockQuote;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.swing.*;
 import java.time.LocalDate;
 
 @Service
@@ -34,6 +36,17 @@ public class AlphaVantageService {
 				}
 				log.info("Fetching stock data for symbol: {} from {} to {}", symbol, startDate, endDate);
 				return fetchFromStockDataServiceBetween(stockDataService, symbol, startDate, endDate);
+		}
+
+		public StockQuote getStockDataQuote(String symbol) {
+				log.info("Fetching stock data for symbol: {}", symbol);
+				ServiceInstance stockDataService = getStockDataServiceInstance();
+				if (stockDataService == null) {
+						log.warn("No stock-data service instance available, fetching from API directly");
+						throw new RuntimeException("No stock-data service instance available");
+				}
+				StockQuote stockQuote = new StockQuote();
+				StockDataDto.StockMetadataDto stockMetadataDto = fetchMetadataFromStockDataService(stockDataService, symbol);
 
 		}
 
@@ -63,6 +76,15 @@ public class AlphaVantageService {
 						.build()
 						.toUriString();
 				return executeServiceCall(uri, symbol);
+		}
+
+		private StockDataDto.StockMetadataDto fetchMetadataFromStockDataService(ServiceInstance serviceInstance, String symbol) {
+				String uri = UriComponentsBuilder.fromUri(serviceInstance.getUri())
+						.path("/stock-data/get")
+						.queryParam("symbol", symbol)
+						.build()
+						.toUriString();
+				return executeServiceCall(uri, symbol).getStockMetadata();
 		}
 
 		private StockDataDto executeServiceCall(String uri, String symbol) {

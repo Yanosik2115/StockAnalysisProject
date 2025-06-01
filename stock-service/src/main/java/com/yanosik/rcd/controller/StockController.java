@@ -29,4 +29,9 @@ public class StockController {
 		                                                 @Nullable @RequestParam("endDate") LocalDate endDate) {
 				return ResponseEntity.ok(alphaVantageService.fetchStockData(symbol, startDate, endDate));
 		}
+
+		@GetMapping("/get/quote")
+		public ResponseEntity<StockDataDto> getStockDataQuote(@RequestParam("symbol") String symbol) {
+				return ResponseEntity.ok(alphaVantageService.getStockDataQuote(symbol));
+		}
 }
